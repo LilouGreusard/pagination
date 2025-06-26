@@ -1,0 +1,42 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Hello MainController!{% endblock %}
+{% block knp %} {{ knp_pagination_rel_links(articles) }} {% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="my-5"> {{ articles.getTotalItemCount }} articles en lignes </h1>
+            </div>
+            {% for item in articles %}
+
+            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                <div class="card">
+                    <img src="https://imgs.search.brave.com/vVUtb4x8xYKHX-ZJnHmEIfCg40ppaVIMM3ZLN00J8jc/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9hdmF0/YXJmaWxlcy5hbHBo/YWNvZGVycy5jb20v/MzY3L3RodW1iLTM1/MC0zNjc0Nzgud2Vi/cA" class="card-img-top" alt="Hello World">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ item.title }}</h5>
+                        <p class="card-text">{{ item.author }}</p>
+                        <b class="card-text">
+                            <a href="{{ path('app_main_slug', {slug: item.category.slug}) }}">
+                                {{ item.category.name }}
+                            </a>
+                        </b>
+                        <p class="card-text">
+                            <a href="{{ path('app_cart', {id: item.id}) }}">
+                                {{ item.price }} €
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {% endfor %}
+
+            <div class="navigation">
+                {{ knp_pagination_render(articles) }}
+            </div>
+
+        </div>
+    </div>
+{% endblock %}
