@@ -2,13 +2,18 @@
 
 namespace App\Controller;
 
+
+use Stripe\Stripe;
+use Stripe\TaxeRate;
 use App\Entity\Articles;
-use App\Repository\ArticlesRepository;
 use App\Services\CartServices;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use App\Repository\ArticlesRepository;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 #[Route('/cart', name: 'app_')]
 final class CartController extends AbstractController
@@ -124,6 +129,61 @@ final class CartController extends AbstractController
     public function empty(SessionInterface $session){
         $session->remove('panier');
         return $this->redirectToRoute('app_index');
+    }
+
+    #[Route('/payement', name: 'payement', priority: 10)]
+    public function payement(){
+        $stripeSk = $_ENV['STRIPE_SK'];
+        Stripe::setApiKey($stripeSk);
+        
+        // $taxeRate = TaxeRate::create([
+        //     'display_name'=>'tva',
+        //     'inclusive'=>false,
+        //     'percentage'=>20.0,
+        //     'country'=>'FR',
+        // ]);
+
+        $lineItems = [];
+        foreach ($this->cartServices->getFullcart() as $product)
+        {
+            $lineItems[] = [
+                'price_data'=>[
+                    'currency'=>'eur',
+                    'unit_amount'=>$product['article']->getPrice()*100,
+                    'product_data'=>[
+                        'name'=>$product['article']->getTitle(),
+                        'description'=>'description par défaut',
+                    ],
+                ],
+                'quantity'=>$product['quantity'],
+            ];
+        }
+
+        $session = \Stripe\Checkout\Session::create([
+            'payment_method_types'=>['card', 'sepa_debit'],
+            'line_items'=>$lineItems,
+            'mode'=>'payment',
+            'success_url'=>'https://127.0.0.1:8000/cart/success?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url'=>$this->generateUrl('app_cancel_url',[],UrlGeneratorInterface::ABSOLUTE_URL),
+        ]);
+
+        return $this->redirect($session->url,303);
+    }
+
+    #[Route('/success', name: 'success_url',priority:10)]
+    public function success(Request $request){
+        $sessionId = $request->query->get('session_id');
+        $stripe = new \Stripe\StripeClient($_ENV['STRIPE_SK']);
+        $session = $stripe->checkout->session->retrieve($sessionId);
+        $payment = $stripe->paymentIntents->retrieve($session->payment_intent);
+        $customer = $stripe->customer->retrieve($payment->customer);
+
+        dd($sessionId, $stripe, $session, $payment, $customer);
+    }
+
+    #[Route('/cancel_url', name: 'cancel_url',priority:10)]
+    public function cancel(){
+
     }
 }
 
